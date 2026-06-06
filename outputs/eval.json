@@ -1,0 +1,8 @@
+{
+  "n": 141,
+  "execution_accuracy": 0.1631,
+  "pred_execution_rate": 1.0,
+  "grounded_first_try": 141,
+  "repaired": 0,
+  "abstained": 0
+}
