@@ -18,8 +18,10 @@ from sqlmender.train.prompt import build_prompt
 
 def _clean_sql(text: str) -> str:
     text = text.strip()
+    # model sometimes echoes the prompt — take everything after the last marker
+    if "### SQL:" in text:
+        text = text.split("### SQL:")[-1].strip()
     if "```" in text:
-        # take content inside the first code fence if present
         parts = text.split("```")
         text = parts[1] if len(parts) > 1 else text
         text = text.replace("sql", "", 1).strip() if text.lower().startswith("sql") else text
