@@ -24,10 +24,12 @@ def create_app() -> FastAPI:
     app.include_router(router)
     try:
         from sqlmender.agent.graph import build_default_agent
-        from sqlmender.llm.generator import mlx_available
+        from sqlmender.llm.generator import get_generator, mlx_available
 
-        app.state.agent = build_default_agent(get_settings())
-        logger.info("Agent ready (generator: {}).", "mlx-lora" if mlx_available() else "heuristic")
+        settings = get_settings()
+        app.state.agent = build_default_agent(settings)
+        gen = get_generator(settings)
+        logger.info("Agent ready (generator: {}).", gen.name)
     except Exception as e:  # noqa: BLE001
         app.state.agent = None
         logger.warning("Agent unavailable: {}", e)

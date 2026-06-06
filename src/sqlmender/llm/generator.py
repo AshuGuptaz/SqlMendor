@@ -1,16 +1,12 @@
 """SQL generators.
 
-Two interchangeable backends behind one ``Generator`` protocol:
+Three interchangeable backends behind one ``Generator`` protocol:
 
-  * ``MLXGenerator`` — the fine-tuned 4-bit Qwen + LoRA adapter (Apple Silicon).
-  * ``HeuristicGenerator`` — a deterministic pattern engine that maps common
-    questions to SQL with no model. It runs anywhere, so the self-healing agent is
-    fully exercisable in CI/sandbox, and it doubles as the *baseline* the fine-tuned
-    model is compared against. It also performs a small, real repair: when handed a
-    "no such column" error it swaps in the correct column from a synonym map.
+  * ``MLXGenerator``   — fine-tuned 4-bit Qwen + LoRA adapter (Apple Silicon).
+  * ``GroqGenerator``  — real LLM via Groq's fast inference API (requires GROQ_API_KEY).
+  * ``HeuristicGenerator`` — deterministic pattern engine; runs anywhere; the baseline.
 
-``get_generator`` returns the MLX backend when MLX + a trained adapter are present,
-otherwise the heuristic one — so the same agent code serves both environments.
+Priority order in ``get_generator``: MLX → Groq → Heuristic.
 """
 
 from __future__ import annotations
@@ -145,6 +141,56 @@ class HeuristicGenerator:
         return "SELECT name, price FROM products ORDER BY price DESC LIMIT 5;"
 
 
+_SQL_FENCE = re.compile(r"```(?:sql)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+
+
+def _clean_sql(text: str) -> str:
+    """Strip markdown fences and normalise to a single-line SQL string."""
+    m = _SQL_FENCE.search(text)
+    if m:
+        text = m.group(1)
+    text = text.strip().strip("`").strip()
+    sql = " ".join(line.strip() for line in text.splitlines() if line.strip())
+    if sql and not sql.endswith(";"):
+        sql += ";"
+    return sql
+
+
+class GroqGenerator:
+    """Real LLM SQL generation via Groq's fast inference API."""
+
+    name = "groq"
+
+    def __init__(self, settings: Settings | None = None):
+        import groq
+
+        s = settings or get_settings()
+        self._client = groq.Groq(api_key=s.groq_api_key)
+        self._model = s.groq_model
+
+    def generate(self, question, few_shots=None, repair_hint=None) -> str:
+        from sqlmender.llm.prompts import build_agent_prompt
+
+        prompt = build_agent_prompt(question, few_shots, repair_hint)
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a SQL expert. Return ONLY a valid SQLite SELECT query — "
+                        "no explanation, no markdown, no extra text."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+            max_tokens=256,
+        )
+        raw = response.choices[0].message.content.strip()
+        return _clean_sql(raw)
+
+
 class MLXGenerator:
     """Fine-tuned 4-bit Qwen + LoRA adapter (Apple Silicon)."""
 
@@ -188,8 +234,21 @@ def mlx_available(settings: Settings | None = None) -> bool:
     return Path(s.adapter_path).exists()
 
 
+def groq_available(settings: Settings | None = None) -> bool:
+    s = settings or get_settings()
+    if not s.groq_api_key:
+        return False
+    try:
+        import groq  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def get_generator(settings: Settings | None = None) -> Generator:
     s = settings or get_settings()
     if mlx_available(s):
         return MLXGenerator(s)
+    if groq_available(s):
+        return GroqGenerator(s)
     return HeuristicGenerator()

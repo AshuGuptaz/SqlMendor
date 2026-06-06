@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     few_shot_k: int = 3
     train_data_path: str = str(ROOT / "data" / "train.jsonl")
 
+    # groq
+    groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+
     # auth
     jwt_secret: str = Field(default="dev-secret-change-me", alias="JWT_SECRET")
     jwt_algorithm: str = "HS256"
