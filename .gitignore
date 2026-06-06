@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# generated artifacts (reproducible via `make data` / `make train`)
+data/*.db
+data/*.jsonl
+data/mlx/
+adapters/*
+!adapters/.gitkeep
+*.safetensors
+
+.DS_Store
+.idea/

@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SQLMender API (uvicorn :8000)",
+      "type": "debugpy", "request": "launch", "module": "uvicorn",
+      "args": ["sqlmender.api.main:app","--reload","--port","8000"],
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }, "console": "integratedTerminal"
+    },
+    {
+      "name": "Run eval", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/scripts/run_eval.py",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }, "console": "integratedTerminal"
+    }
+  ]
+}
