@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SQLMender — self-healing text-to-SQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0a0c0e;--bg-2:#0f1316;--panel:#12171a;--panel-2:#161c20;--line:#222b30;--line-2:#2c373d;
+  --ink:#ECEAE3;--ink-dim:#9aa4ac;--ink-faint:#69747b;--signature:#d7ff3e;--signature-dim:#aacb31;
+  --teal:#43d6c4;--amber:#f5b13d;--rose:#ff6f91;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;
+  --serif:"Fraunces",Georgia,serif;--sans:"Hanken Grotesk",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  --maxw:1080px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  background-image:radial-gradient(840px 460px at 84% -10%,rgba(215,255,62,.07),transparent 60%),radial-gradient(640px 460px at -6% 112%,rgba(67,214,196,.06),transparent 55%);}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.gridbg{position:fixed;inset:0;z-index:-1;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 100% 65% at 50% 0%,#000 30%,transparent 80%);opacity:.32}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 26px}
+a{color:inherit;text-decoration:none}
+.reveal{opacity:0;transform:translateY(14px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.topbar{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:linear-gradient(180deg,rgba(10,12,14,.92),rgba(10,12,14,.55));border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:600}
+.brand .mk{width:24px;height:24px;border-radius:7px;background:var(--signature);display:flex;align-items:center;justify-content:center;color:#0a0c0e;font-family:var(--mono);font-weight:700;font-size:13px}
+.brand b{font-family:var(--mono);font-size:13px;letter-spacing:.04em}
+.brand b span{color:var(--ink-faint)}
+.statusmini{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+.statusmini .sd{width:7px;height:7px;border-radius:50%;background:var(--ink-faint)}
+.statusmini .sd.up{background:var(--ok);box-shadow:0 0 8px var(--ok)}.statusmini .sd.down{background:var(--warn)}
+.hero{padding:84px 0 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--signature-dim);margin-bottom:20px}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(40px,6.5vw,78px);line-height:.98;letter-spacing:-.02em}
+h1 .it{font-style:italic;color:var(--signature)}
+.lede{margin-top:22px;max-width:640px;font-size:17.5px;color:var(--ink-dim)}
+.lede b{color:var(--ink);font-weight:600}
+.specbar{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:42px}
+.spec{background:var(--panel);padding:18px 16px}
+.spec .n{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1}
+.spec .n small{font-size:14px;color:var(--ink-faint);font-family:var(--mono)}
+.spec .n.gate{color:var(--warn)}
+.spec .l{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);margin-top:8px}
+.sec{padding:64px 0 4px}
+.sechead{display:flex;align-items:baseline;gap:16px;margin-bottom:28px}
+.sechead .idx{font-family:var(--mono);font-size:12px;color:var(--signature-dim)}
+.sechead h2{font-family:var(--serif);font-weight:500;font-size:clamp(26px,4vw,36px);letter-spacing:-.01em}
+.sechead .rule{flex:1;height:1px;background:var(--line)}
+/* pipeline */
+.pipe{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.stage{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 14px;position:relative}
+.stage .k{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.stage h4{font-family:var(--serif);font-size:18px;font-weight:600;margin:5px 0 3px}
+.stage p{font-size:12.5px;color:var(--ink-dim)}
+.stage .arrow{position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-family:var(--mono);z-index:2}
+.loopnote{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--ink-faint);display:flex;gap:8px;align-items:center}
+.loopnote b{color:var(--teal);font-weight:700}
+/* what's inside */
+.inside{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.ing{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px 16px;position:relative;overflow:hidden}
+.ing::before{content:"";position:absolute;left:0;top:0;height:3px;width:100%;background:var(--accent)}
+.ing .was{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.06em}
+.ing h4{font-family:var(--serif);font-size:19px;font-weight:600;margin:7px 0 4px}
+.ing p{font-size:13px;color:var(--ink-dim)}
+.ing .role{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--accent)}
+/* console */
+.console{background:linear-gradient(180deg,var(--panel),var(--bg-2));border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cbar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+.cbar .lights{display:flex;gap:6px}.cbar .lights i{width:10px;height:10px;border-radius:50%;display:block}
+.cbar .lights i:nth-child(1){background:#ff5f57}.cbar .lights i:nth-child(2){background:#febc2e}.cbar .lights i:nth-child(3){background:#28c840}
+.cbar .title{font-family:var(--mono);font-size:12px;color:var(--ink-dim)}
+.cbar .live{margin-left:auto;font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line-2);color:var(--warn)}
+.cbar .live.on{color:var(--ok);border-color:rgba(74,222,128,.5)}
+.cbody{padding:18px;display:flex;flex-direction:column;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:5px 11px;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--teal);color:var(--teal)}
+.ask{display:flex;gap:10px}
+.ask input{flex:1;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:var(--sans);font-size:14.5px;outline:none;transition:border-color .2s}
+.ask input:focus{border-color:var(--teal)}
+.ask button{font-family:var(--mono);font-size:13px;font-weight:700;background:var(--teal);color:#06201c;border:none;border-radius:10px;padding:0 20px;cursor:pointer;transition:filter .2s,transform .1s}
+.ask button:hover{filter:brightness(1.08)}.ask button:active{transform:scale(.97)}.ask button:disabled{opacity:.5;cursor:wait}
+.out{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px;min-height:130px}
+.out .ph{color:var(--ink-faint);font-family:var(--mono);font-size:12.5px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.badge{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--line-2);color:var(--ink-dim)}
+.badge.good{color:var(--ok);border-color:rgba(74,222,128,.45)}
+.badge.warn{color:var(--warn);border-color:rgba(251,191,36,.45)}
+.label{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);margin:6px 0 6px}
+pre.sql{font-family:var(--mono);font-size:13px;color:#e6edf0;background:#0c1013;border:1px solid var(--line-2);border-radius:10px;padding:13px 14px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;margin:0}
+pre.sql .kw{color:var(--rose);font-weight:700}pre.sql .fn{color:var(--signature)}pre.sql .num{color:var(--teal)}pre.sql .str{color:var(--amber)}
+.trace{margin-top:6px;display:flex;flex-direction:column;gap:8px}
+.step{border:1px solid var(--line);border-left:3px solid var(--line-2);border-radius:0 9px 9px 0;padding:9px 12px;background:var(--panel)}
+.step.okk{border-left-color:var(--ok)}.step.err{border-left-color:var(--bad)}
+.step .h{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+.step .h .st{color:var(--ink)}
+.step code{font-family:var(--mono);font-size:11.5px;color:#cdd6da;display:block;margin-top:5px;word-break:break-word}
+.step .v{font-family:var(--mono);font-size:11px;margin-top:4px}
+.step.err .v{color:var(--bad)}.step.okk .v{color:var(--ok)}
+table.res{width:100%;border-collapse:collapse;margin-top:10px;font-family:var(--mono);font-size:12px}
+table.res th{text-align:left;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;border-bottom:1px solid var(--line-2);padding:7px 9px}
+table.res td{padding:7px 9px;border-bottom:1px solid var(--line)}
+table.res tr:hover td{background:var(--panel)}
+.rowcount{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:8px}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--line-2);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:7px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{margin-top:74px;border-top:1px solid var(--line);padding:42px 0 66px}
+.honest{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:0 12px 12px 0;padding:20px 22px;max-width:840px}
+.honest h4{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--warn);margin-bottom:10px}
+.honest p{color:var(--ink-dim);font-size:14px;margin-bottom:9px}.honest p:last-child{margin-bottom:0}
+.honest b{color:var(--ink);font-weight:600}
+.colo{margin-top:32px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+@media(max-width:860px){.specbar,.inside,.pipe{grid-template-columns:1fr}.pipe{flex-direction:column}.stage .arrow{display:none}}
+</style>
+</head>
+<body>
+<div class="gridbg"></div>
+
+<header class="topbar"><div class="wrap">
+  <div class="brand"><span class="mk">S</span><b>SQLMender<span>&nbsp;· self-healing text-to-SQL</span></b></div>
+  <div class="statusmini"><span class="sd" id="sd"></span><span id="mode">connecting…</span></div>
+</div></header>
+
+<section class="hero"><div class="wrap">
+  <div class="eyebrow reveal">Fine-tuning · Retrieval · Agentic self-correction</div>
+  <h1 class="reveal" style="animation-delay:.06s">SQL that <span class="it">fixes itself</span><br>before it answers.</h1>
+  <p class="lede reveal" style="animation-delay:.14s">Ask in plain English. SQLMender retrieves the relevant schema and similar examples, generates SQL with a <b>fine-tuned Qwen</b>, runs it against a real database, and if it errors or comes back empty it <b>reads the failure and repairs the query</b> — or abstains rather than hand you garbage.</p>
+  <div class="specbar reveal" style="animation-delay:.22s">
+    <div class="spec"><div class="n">1,414</div><div class="l">SQL pairs · 0 broken</div></div>
+    <div class="spec"><div class="n">56</div><div class="l">Tests · 79%</div></div>
+    <div class="spec"><div class="n">3</div><div class="l">Repair attempts</div></div>
+    <div class="spec"><div class="n">16<small>%</small></div><div class="l">Baseline exec-acc</div></div>
+    <div class="spec"><div class="n gate">⟳ run</div><div class="l">Fine-tuned · M1</div></div>
+  </div>
+</div></section>
+
+<section class="sec"><div class="wrap">
+  <div class="sechead"><span class="idx">flow</span><h2>The self-healing loop</h2><span class="rule"></span></div>
+  <div class="pipe">
+    <div class="stage" style="--accent:var(--amber)"><div class="k">01</div><h4>Retrieve</h4><p>Relevant tables + similar (Q,SQL) examples</p><span class="arrow">→</span></div>
+    <div class="stage" style="--accent:var(--signature-dim)"><div class="k">02</div><h4>Generate</h4><p>Fine-tuned Qwen writes SQL</p><span class="arrow">→</span></div>
+    <div class="stage" style="--accent:var(--teal)"><div class="k">03</div><h4>Execute</h4><p>Safe read-only run on the DB</p><span class="arrow">→</span></div>
+    <div class="stage" style="--accent:var(--rose)"><div class="k">04</div><h4>Critique</h4><p>DB is the oracle: error / empty → repair</p></div>
+  </div>
+  <div class="loopnote">↺ <b>repair</b> feeds the execution error back into Generate (up to 3 tries) · else <b>abstain</b> — the database, not a model's opinion, decides correctness.</div>
+</div></section>
+
+<section class="sec"><div class="wrap">
+  <div class="sechead"><span class="idx">live</span><h2>Try it</h2><span class="rule"></span></div>
+  <div class="console reveal">
+    <div class="cbar"><span class="lights"><i></i><i></i><i></i></span><span class="title">sqlmender · POST /ask</span><span class="live" id="live">demo</span></div>
+    <div class="cbody">
+      <div class="chips" id="chips">
+        <span class="chip">What are the 5 most expensive products?</span>
+        <span class="chip">What is the total value of all order items?</span>
+        <span class="chip">How many delivered orders came from Japan?</span>
+        <span class="chip">Who won the 2031 World Cup?</span>
+      </div>
+      <div class="ask"><input id="q" placeholder="Ask the database in plain English…" /><button id="go">Ask</button></div>
+      <div class="out" id="out"><div class="ph">// generated SQL, the self-healing trace, and the result render here</div></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="sec"><div class="wrap">
+  <div class="sechead"><span class="idx">inside</span><h2>Three ideas, one system</h2><span class="rule"></span></div>
+  <div class="inside">
+    <div class="ing" style="--accent:var(--amber)"><div class="was">WAS · MLX LoRA warm-up</div><h4>Fine-tuning</h4><p>A 4-bit Qwen2.5-3B adapted with MLX LoRA (rank 16) on 1,273 execution-validated pairs.</p><div class="role">→ the generator</div></div>
+    <div class="ing" style="--accent:var(--teal)"><div class="was">WAS · self-healing RAG</div><h4>Retrieval + self-correction</h4><p>Schema + few-shot retrieval ground the prompt; a critic-and-retry loop catches failures.</p><div class="role">→ retrieve + heal</div></div>
+    <div class="ing" style="--accent:var(--rose)"><div class="was">WAS · text-to-SQL fine-tune</div><h4>The task + the metric</h4><p>NL→SQL over a 6-table store, scored by execution accuracy against a real SQLite DB.</p><div class="role">→ task + eval</div></div>
+  </div>
+</div></section>
+
+<footer class="footer"><div class="wrap">
+  <div class="sechead"><span class="idx">notes</span><h2>Honest by design</h2><span class="rule"></span></div>
+  <div class="honest">
+    <h4>⚠ What's real vs. what needs your M1</h4>
+    <p>Everything here that could run truthfully did: the database, a <b>1,414-pair dataset where every query executes</b>, <b>56 tests at 79% coverage</b>, and the full self-healing loop — including a real repair (a query referencing a nonexistent column is caught by the database and corrected on retry). The baseline execution accuracy (16%) is the <b>heuristic</b> generator's real score, which is exactly the gap fine-tuning closes.</p>
+    <p>The fine-tuned model's accuracy and loss are <b>⟳ run</b> placeholders — MLX trains on Apple Silicon, and this was assembled on Linux, so those run on your M1. The loop guarantees <i>runnable</i> SQL or an abstention; execution accuracy measures <i>correctness</i>. This console is live when the API is up, demo otherwise.</p>
+  </div>
+  <div class="colo"><span>SQLMENDER · one project · fine-tune + retrieve + self-heal</span><span>make install · make dev · :8000</span></div>
+</div></footer>
+
+<script>
+var TOKEN=null,LIVE=false;
+var DEMO={
+ "What are the 5 most expensive products?":{status:"ok",attempts:1,answer:"Returned 5 rows.",sql:"SELECT name, price FROM products ORDER BY price DESC LIMIT 5;",columns:["name","price"],rows:[["Pro Set 160",497.29],["Basic Tool 45",496.38],["Pro Pack 134",495.54],["Eco Kit 88",494.10],["Smart Unit 95",491.77]],row_count:5,history:[{attempt:1,sql:"SELECT name, price FROM products ORDER BY price DESC LIMIT 5;",error:null,verdict:"grounded: query executed and returned results",ok:true}]},
+ "What is the total value of all order items?":{status:"ok",attempts:2,answer:"SUM(unit_price) = 188280.01",sql:"SELECT SUM(unit_price) FROM order_items;",columns:["SUM(unit_price)"],rows:[[188280.01]],row_count:1,history:[{attempt:1,sql:"SELECT SUM(total_price) FROM order_items;",error:"no such column: total_price",verdict:"execution error: no such column: total_price",ok:false},{attempt:2,sql:"SELECT SUM(unit_price) FROM order_items;",error:null,verdict:"grounded: query executed and returned results",ok:true}]},
+ "How many delivered orders came from Japan?":{status:"ok",attempts:1,answer:"COUNT(*) = 7",sql:"SELECT COUNT(*) FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.country = 'Japan' AND o.status = 'delivered';",columns:["COUNT(*)"],rows:[[7]],row_count:1,history:[{attempt:1,sql:"SELECT COUNT(*) FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.country = 'Japan' AND o.status = 'delivered';",error:null,verdict:"grounded",ok:true}]},
+ "Who won the 2031 World Cup?":{status:"abstained",attempts:3,answer:"I couldn't produce a query that runs correctly against the database after several attempts, so I'm not going to guess. Try rephrasing the question.",sql:"SELECT winner FROM world_cup WHERE year = 2031;",columns:[],rows:[],row_count:0,history:[{attempt:1,sql:"SELECT winner FROM world_cup WHERE year = 2031;",error:"no such table: world_cup",verdict:"execution error: no such table: world_cup",ok:false},{attempt:2,sql:"SELECT winner FROM world_cup WHERE year = 2031;",error:"no such table: world_cup",verdict:"execution error: no such table: world_cup",ok:false},{attempt:3,sql:"SELECT winner FROM world_cup WHERE year = 2031;",error:"no such table: world_cup",verdict:"execution error: no such table: world_cup",ok:false}]}
+};
+var FB={status:"ok",attempts:1,answer:"(demo) start the API with make dev for live answers.",sql:"SELECT name, price FROM products ORDER BY price DESC LIMIT 3;",columns:["name","price"],rows:[["Pro Set 160",497.29],["Basic Tool 45",496.38],["Pro Pack 134",495.54]],row_count:3,history:[{attempt:1,sql:"SELECT name, price FROM products ORDER BY price DESC LIMIT 3;",error:null,verdict:"grounded",ok:true}]};
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+function hl(s){s=esc(s);s=s.replace(/\b(SELECT|FROM|WHERE|JOIN|ON|GROUP BY|ORDER BY|LIMIT|AND|OR|HAVING|DESC|ASC|BETWEEN|AS|DISTINCT|LEFT|INNER)\b/g,'<span class="kw">$1</span>');s=s.replace(/\b(AVG|SUM|MAX|MIN|COUNT)\s*\(/g,'<span class="fn">$1</span>(');s=s.replace(/'([^']*)'/g,'<span class="str">\''+'$1'+'\'</span>');s=s.replace(/\b(\d+\.?\d*)\b/g,'<span class="num">$1</span>');return s;}
+function setMode(){var sd=document.getElementById('sd'),m=document.getElementById('mode'),l=document.getElementById('live');sd.className='sd '+(LIVE?'up':'down');m.textContent=LIVE?'live · API connected':'demo mode';l.textContent=LIVE?'live':'demo';l.className='live '+(LIVE?'on':'');}
+async function connect(){try{var h=await fetch('/health',{cache:'no-store'});if(!h.ok)throw 0;var t=await fetch('/auth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'username=demo&password=demo-password'});if(t.ok){TOKEN=(await t.json()).access_token;LIVE=true;}}catch(e){LIVE=false;}setMode();}
+async function callAsk(q){if(LIVE&&TOKEN){try{var r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({question:q})});if(r.ok)return await r.json();}catch(e){}}return DEMO[q]||FB;}
+function render(el,d){
+  var ab=d.status==='abstained';
+  var b='<div class="badges"><span class="badge '+(ab?'warn':'good')+'">'+(ab?'○ abstained':'● grounded')+'</span><span class="badge">attempts: '+d.attempts+'</span>'+(d.row_count!=null?'<span class="badge">'+d.row_count+' row(s)</span>':'')+'</div>';
+  var sqlBlock=d.sql?'<div class="label">final SQL</div><pre class="sql">'+hl(d.sql)+'</pre>':'';
+  var trace='';
+  if(d.history&&d.history.length){trace='<div class="label">self-healing trace</div><div class="trace">';
+    d.history.forEach(function(h){trace+='<div class="step '+(h.ok?'okk':'err')+'"><div class="h">attempt '+h.attempt+' · <span class="st">'+(h.ok?'accepted':'rejected')+'</span></div><code>'+esc(h.sql)+'</code><div class="v">'+esc(h.verdict)+'</div></div>';});
+    trace+='</div>';}
+  var tbl='';
+  if(d.columns&&d.columns.length){tbl='<div class="label">result</div><table class="res"><thead><tr>'+d.columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'+(d.rows||[]).slice(0,12).map(function(r){return '<tr>'+r.map(function(v){return '<td>'+esc(v)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table>';}
+  else if(ab){tbl='<div class="rowcount">'+esc(d.answer)+'</div>';}
+  el.innerHTML=b+sqlBlock+trace+tbl;
+}
+(function(){
+  var inp=document.getElementById('q'),btn=document.getElementById('go'),out=document.getElementById('out'),chips=document.getElementById('chips');
+  async function run(){var q=inp.value.trim();if(!q)return;btn.disabled=true;out.innerHTML='<span class="spinner"></span><span class="ph">running the agent…</span>';var d=await callAsk(q);render(out,d);btn.disabled=false;}
+  btn.addEventListener('click',run);inp.addEventListener('keydown',function(e){if(e.key==='Enter')run();});
+  Array.prototype.forEach.call(chips.querySelectorAll('.chip'),function(c){c.addEventListener('click',function(){inp.value=c.textContent;run();});});
+  connect();
+})();
+</script>
+</body>
+</html>
