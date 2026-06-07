@@ -333,16 +333,20 @@ curl -s -X POST localhost:8000/sql \
 
 ## Results & Metrics
 
-| Metric | Value |
-|---|---|
-| **Dataset size** | 1,414 pairs (1,273 train / 141 test) |
-| **Non-executing training pairs** | **0** (every pair validated against real DB) |
-| **Test suite** | **56 tests passing**, **79% coverage** |
-| **Execution accuracy (heuristic baseline)** | **16.3%** |
-| **Predicted-query execution rate** | **100%** (loop guarantees runnable SQL or abstain) |
-| **Fine-tuned MLX accuracy** | Run `make train && make eval` on Apple Silicon |
+| Metric | Heuristic baseline | Fine-tuned MLX (Qwen2.5-3B) |
+|---|---|---|
+| **Execution accuracy** | 16.3% | **53.9%** |
+| Predicted-query execution rate | 100% | 56.0% |
+| Grounded on first try | 141 / 141 | 46 / 141 |
+| Repaired successfully | 0 | 33 / 141 |
+| Abstained (honest) | 0 | 62 / 141 |
+| **Dataset** | 1,414 pairs (1,273 train / 141 test), 0 non-executing | — |
+| **Test suite** | 56 passing, 79% coverage | — |
+| **Training** | — | rank 16 LoRA, 600 iters, 2.7GB peak, Apple M1 |
 
-> **Runnable ≠ correct.** The 100% execution rate means the agent never crashes — it either returns SQL that runs or abstains. The 16.3% accuracy is the heuristic baseline; the fine-tuned model on MLX closes this gap significantly.
+**+37.6 percentage points lift** from fine-tuning (16.3% → 53.9%).
+
+> Abstentions are intentional — the agent declines rather than return wrong SQL. The repair loop salvaged 33 queries that failed on first attempt.
 
 ---
 
