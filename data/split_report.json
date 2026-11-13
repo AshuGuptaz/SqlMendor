@@ -1,0 +1,51 @@
+{
+  "seed": 42,
+  "train": 1006,
+  "test_seen": 111,
+  "test_unseen": 297,
+  "train_templates": 22,
+  "unseen_templates": 15,
+  "unseen_template_sql": [
+    "select avg(rv.rating) from reviews rv join products p on rv.product_id = p.product_id join categories c on p.category_id = c.category_id where c.name = ?",
+    "select c.name, count(*) as n from products p join categories c on p.category_id = c.category_id group by c.name",
+    "select count(*) from customers where country = ?",
+    "select count(*) from orders where status = ?",
+    "select count(*) from reviews where rating = ?",
+    "select distinct status from orders",
+    "select name from products where price < ?",
+    "select name from products where price > ?",
+    "select name, price from products order by price asc limit ?",
+    "select order_id from orders where status = ?",
+    "select order_id, total from orders where total > ?",
+    "select p.name from products p join reviews rv on p.product_id = rv.product_id group by p.product_id, p.name having avg(rv.rating) >= ?",
+    "select p.name, sum(oi.quantity) as qty from order_items oi join products p on oi.product_id = p.product_id group by p.product_id, p.name order by qty desc limit ?",
+    "select status, count(*) as n from orders group by status",
+    "select sum(stock) from products"
+  ],
+  "unseen_by_category": {
+    "aggregate": 83,
+    "distinct": 6,
+    "filter": 128,
+    "groupby": 4,
+    "groupby_having": 16,
+    "join_groupby": 20,
+    "multi_join": 24,
+    "orderby": 16
+  },
+  "train_by_category": {
+    "aggregate": 90,
+    "distinct": 6,
+    "filter": 95,
+    "groupby": 2,
+    "groupby_having": 13,
+    "join": 38,
+    "join_aggregate": 187,
+    "join_filter": 257,
+    "join_groupby": 3,
+    "join_orderby": 112,
+    "multi_join": 36,
+    "multi_join_having": 116,
+    "orderby": 15,
+    "range": 36
+  }
+}
