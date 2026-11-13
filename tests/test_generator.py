@@ -54,5 +54,12 @@ def test_repair_returns_match_when_no_synonym():
     assert is_select_only(out)
 
 
-def test_get_generator_is_heuristic_without_mlx():
-    assert get_generator().name == "heuristic"
+def test_get_generator_is_heuristic_without_mlx(tmp_path):
+    # Independent of the machine: point at a missing adapter and no Groq key, so the result
+    # does not change when a trained adapter or API key happens to be present locally.
+    from sqlmender.config import get_settings
+
+    s = get_settings().model_copy(
+        update={"adapter_path": str(tmp_path / "none"), "groq_api_key": ""}
+    )
+    assert get_generator(s).name == "heuristic"
