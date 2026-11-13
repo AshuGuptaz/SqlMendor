@@ -52,9 +52,10 @@ def build_agent(
     return g.compile()
 
 
-def build_default_agent(settings: Settings | None = None):
+def build_default_agent(settings: Settings | None = None, generator=None):
     """Wire the real backends: heuristic-or-MLX generator, execution-grounded critic,
-    safe executor, BM25 few-shot index."""
+    safe executor, BM25 few-shot index. Pass ``generator`` to force a backend (used by the eval
+    script to compare heuristic vs fine-tuned vs hosted models)."""
     s = settings or get_settings()
     from sqlmender.llm.critic import critique
     from sqlmender.llm.generator import get_generator
@@ -65,7 +66,7 @@ def build_default_agent(settings: Settings | None = None):
         return execute_query(sql, s.db_path)
 
     return build_agent(
-        generator=get_generator(s),
+        generator=generator or get_generator(s),
         critic=critique,
         executor=executor,
         example_index=ExampleIndex.from_jsonl(s.train_data_path),
