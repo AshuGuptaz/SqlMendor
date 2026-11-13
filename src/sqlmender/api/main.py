@@ -24,7 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(router)
     try:
         from sqlmender.agent.graph import build_default_agent
-        from sqlmender.llm.generator import get_generator, mlx_available
+        from sqlmender.llm.generator import get_generator
 
         settings = get_settings()
         app.state.agent = build_default_agent(settings)
