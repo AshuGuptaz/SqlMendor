@@ -33,8 +33,11 @@ def main() -> None:
     args = ap.parse_args()
     d = Path(args.data_dir)
     convert(d / "train.jsonl", MLX_DIR / "train.jsonl")
-    # mlx-lm expects a valid.jsonl; use the test split as validation.
-    convert(d / "test.jsonl", MLX_DIR / "valid.jsonl")
+    # mlx-lm expects a valid.jsonl. Use held-out paraphrases of TRAINING templates (test_seen),
+    # never the unseen-template test set: validation must not touch the headline test data.
+    # (Legacy random-split data has no test_seen.jsonl, so fall back to test.jsonl there.)
+    valid_src = d / "test_seen.jsonl" if (d / "test_seen.jsonl").exists() else d / "test.jsonl"
+    convert(valid_src, MLX_DIR / "valid.jsonl")
 
 
 if __name__ == "__main__":
