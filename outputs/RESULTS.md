@@ -1,5 +1,7 @@
 # Results
 
+> **Update:** the sections below describe the earlier random split, which leaked templates between train and test. See `README.md` for the template-split results (seen: 63.1% fine-tuned vs 22.5% heuristic; unseen: heuristic 35.7%, fine-tuned pending). Fine-tuned numbers use the iteration-400 checkpoint of a run stopped by the OS at iteration 460 of 600.
+
 ## Heuristic baseline — Linux/CPU
 
 From `scripts/run_eval.py` over the 141-example held-out test set:

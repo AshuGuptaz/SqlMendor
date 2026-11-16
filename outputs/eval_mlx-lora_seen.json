@@ -1,0 +1,64 @@
+{
+  "generator": "mlx-lora",
+  "test_file": "test_seen.jsonl",
+  "n": 111,
+  "execution_accuracy": 0.6306,
+  "pred_execution_rate": 0.9369,
+  "grounded_first_try": 84,
+  "repaired": 20,
+  "abstained": 7,
+  "by_category": {
+    "aggregate": {
+      "n": 8,
+      "execution_accuracy": 0.625
+    },
+    "filter": {
+      "n": 11,
+      "execution_accuracy": 0.364
+    },
+    "groupby": {
+      "n": 2,
+      "execution_accuracy": 0.0
+    },
+    "groupby_having": {
+      "n": 3,
+      "execution_accuracy": 1.0
+    },
+    "join": {
+      "n": 10,
+      "execution_accuracy": 0.2
+    },
+    "join_aggregate": {
+      "n": 13,
+      "execution_accuracy": 0.538
+    },
+    "join_filter": {
+      "n": 23,
+      "execution_accuracy": 0.739
+    },
+    "join_groupby": {
+      "n": 1,
+      "execution_accuracy": 1.0
+    },
+    "join_orderby": {
+      "n": 16,
+      "execution_accuracy": 0.75
+    },
+    "multi_join": {
+      "n": 4,
+      "execution_accuracy": 0.75
+    },
+    "multi_join_having": {
+      "n": 12,
+      "execution_accuracy": 0.917
+    },
+    "orderby": {
+      "n": 4,
+      "execution_accuracy": 0.75
+    },
+    "range": {
+      "n": 4,
+      "execution_accuracy": 0.5
+    }
+  }
+}

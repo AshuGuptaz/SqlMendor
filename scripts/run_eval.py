@@ -58,20 +58,44 @@ def main() -> None:
     agent = build_default_agent(s, generator=gen)
     gen_name = getattr(gen, "name", args.generator) if gen else "auto"
 
+    # Resumable: every answered question is appended to a progress file, so a killed
+    # run continues where it stopped instead of starting over.
+    progress = ROOT / "outputs" / f"progress_{gen_name}_{args.name}.jsonl"
+    progress.parent.mkdir(parents=True, exist_ok=True)
+    done: dict[str, dict] = {}
+    if progress.exists():
+        for line in progress.read_text().splitlines():
+            if line.strip():
+                rec = json.loads(line)
+                done[rec["question"]] = rec
+
     pairs, first_try, repaired, abstained = [], 0, 0, 0
     per_cat: dict[str, list[bool]] = defaultdict(list)
     for r in rows:
-        final = agent.invoke(initial_state(r["question"], s.max_repair_attempts))
-        pred = final.get("sql", "SELECT 1")
-        if final.get("status") == "abstained":
-            abstained += 1
-        elif final.get("attempts", 1) == 1:
-            first_try += 1
-        else:
-            repaired += 1
-        pairs.append({"pred_sql": pred, "gold_sql": r["sql"]})
-        ok = results_match(execute_query(pred, s.db_path), execute_query(r["sql"], s.db_path))
-        per_cat[r.get("category", "?")].append(ok)
+        rec = done.get(r["question"])
+        if rec is None:
+            final = agent.invoke(initial_state(r["question"], s.max_repair_attempts))
+            pred = final.get("sql", "SELECT 1")
+            if final.get("status") == "abstained":
+                kind = "abstained"
+            elif final.get("attempts", 1) == 1:
+                kind = "first_try"
+            else:
+                kind = "repaired"
+            try:
+                ok = results_match(
+                    execute_query(pred, s.db_path), execute_query(r["sql"], s.db_path)
+                )
+            except Exception:  # unsafe or invalid prediction counts as a miss
+                ok = False
+            rec = {"question": r["question"], "pred": pred, "kind": kind, "ok": ok}
+            with progress.open("a") as f:
+                f.write(json.dumps(rec) + "\n")
+        first_try += rec["kind"] == "first_try"
+        repaired += rec["kind"] == "repaired"
+        abstained += rec["kind"] == "abstained"
+        pairs.append({"pred_sql": rec["pred"], "gold_sql": r["sql"]})
+        per_cat[r.get("category", "?")].append(rec["ok"])
 
     acc = execution_accuracy(pairs, s.db_path)
     n = len(rows)

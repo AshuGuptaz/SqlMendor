@@ -1,0 +1,44 @@
+{
+  "generator": "heuristic",
+  "test_file": "test_unseen.jsonl",
+  "n": 297,
+  "execution_accuracy": 0.3569,
+  "pred_execution_rate": 1.0,
+  "grounded_first_try": 297,
+  "repaired": 0,
+  "abstained": 0,
+  "by_category": {
+    "aggregate": {
+      "n": 83,
+      "execution_accuracy": 0.964
+    },
+    "distinct": {
+      "n": 6,
+      "execution_accuracy": 1.0
+    },
+    "filter": {
+      "n": 128,
+      "execution_accuracy": 0.0
+    },
+    "groupby": {
+      "n": 4,
+      "execution_accuracy": 0.0
+    },
+    "groupby_having": {
+      "n": 16,
+      "execution_accuracy": 0.0
+    },
+    "join_groupby": {
+      "n": 20,
+      "execution_accuracy": 0.2
+    },
+    "multi_join": {
+      "n": 24,
+      "execution_accuracy": 0.0
+    },
+    "orderby": {
+      "n": 16,
+      "execution_accuracy": 1.0
+    }
+  }
+}

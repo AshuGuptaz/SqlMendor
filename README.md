@@ -333,8 +333,19 @@ curl -s -X POST localhost:8000/sql \
 
 ## Results & Metrics
 
-| Metric | Heuristic baseline | Fine-tuned MLX (Qwen2.5-3B) |
-|---|---|---|
+The test data is split **by query template**, so the headline test set contains SQL shapes the model never saw in training (the earlier random split let near-duplicates leak from train to test).
+
+| Test set | n | Heuristic baseline | Fine-tuned MLX (Qwen2.5-3B) |
+|---|---|---|---|
+| **Unseen templates** (headline) | 297 | 35.7% | pending, see below |
+| Seen templates (new wordings) | 111 | 22.5% | **63.1%** (84 first try, 20 repaired, 7 abstained) |
+
+- The seen and unseen sets are different questions, so baselines are not comparable across rows.
+- The fine-tuned numbers use the iteration-400 checkpoint. The 600-iteration run was killed by the OS at iteration 460 (8 GB machine); loss had flattened by iteration 200 to 300.
+- The unseen-template evaluation of the fine-tuned model has not finished yet (slow on this hardware). `scripts/run_eval.py` is resumable; the number will be added once it completes.
+- The earlier 53.9% figure (n=141) came from a random split with template leakage and should not be read as generalisation.
+
+---|---|---|
 | **Execution accuracy** | 16.3% | **53.9%** |
 | Predicted-query execution rate | 100% | 56.0% |
 | Grounded on first try | 141 / 141 | 46 / 141 |
